@@ -217,6 +217,20 @@ export const practiceService = {
     return { received: true };
   },
 
+  /** Danh sách buổi luyện đã chấm xong (tóm tắt), dùng dựng Tổng quan, Tiến bộ và lộ trình. */
+  async listCompleted(db: Db, userId: string, limit: number) {
+    const rows = await sessionRepository.completedSummaries(db, userId, limit);
+    return rows.map((r) => {
+      const fillers = (r.result?.speech_metrics as { fillerCount?: number } | null)?.fillerCount ?? null;
+      return {
+        id: r.id, libraryItemId: r.library_item_id, title: r.title, goal: r.goal, speakingLanguage: r.speaking_language, isPlacement: r.is_placement,
+        lessonSlug: r.lessonSlug, kind: r.item?.kind ?? 'audio', durationSec: r.item?.duration_sec ?? 0, wordCount: r.item?.word_count ?? null,
+        createdAt: r.created_at, completedAt: r.completed_at,
+        score: r.result?.overall_score ?? null, criteria: (r.result?.criteria_scores ?? {}) as Record<string, number | null>, fillerCount: fillers,
+      };
+    }).filter((r) => r.score != null);
+  },
+
   async get(db: Db, userId: string, sessionId: string) {
     const s = await sessionRepository.findOwned(db, userId, sessionId);
     if (!s) throw new AppError('NOT_FOUND', { resource: 'session' });

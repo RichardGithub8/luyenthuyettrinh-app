@@ -30,6 +30,30 @@ export const sessionRepository = {
       .eq('user_id', userId).in('library_item_id', itemIds).order('created_at', { ascending: false });
     return error ? fail(error) : data;
   },
+  /** Buổi luyện đã chấm xong (mới nhất trước) kèm điểm, tiêu chí và thông tin bài, để dựng Tổng quan/Tiến bộ mà không cần tải từng báo cáo. */
+  async completedSummaries(db: Db, userId: string, limit: number) {
+    const { data: sessions, error } = await db.from('practice_sessions')
+      .select('id,library_item_id,title,goal,speaking_language,is_placement,lesson_id,created_at,completed_at')
+      .eq('user_id', userId).eq('status', 'completed').order('completed_at', { ascending: false }).limit(limit);
+    if (error) return fail(error);
+    if (!sessions.length) return [];
+    const ids = sessions.map((s) => s.id), itemIds = sessions.map((s) => s.library_item_id);
+    const [items, results, slugs] = await Promise.all([
+      db.from('library_items').select('id,kind,duration_sec,word_count').in('id', itemIds),
+      db.from('analysis_results').select('session_id,overall_score,criteria_scores,speech_metrics').in('session_id', ids),
+      this.lessonSlugs(db, sessions.map((s) => s.lesson_id)),
+    ]);
+    if (items.error) return fail(items.error);
+    if (results.error) return fail(results.error);
+    const itemBy = new Map(items.data.map((i) => [i.id, i])), resBy = new Map(results.data.map((r) => [r.session_id, r]));
+    return sessions.map((s) => ({ ...s, item: itemBy.get(s.library_item_id) ?? null, result: resBy.get(s.id) ?? null, lessonSlug: s.lesson_id ? slugs.get(s.lesson_id) ?? null : null }));
+  },
+  async lessonSlugs(db: Db, lessonIds: (string | null)[]) {
+    const ids = [...new Set(lessonIds.filter((x): x is string => !!x))];
+    if (!ids.length) return new Map<string, string>();
+    const { data, error } = await db.from('lessons').select('id,slug').in('id', ids);
+    return error ? fail(error) : new Map(data.map((l) => [l.id, l.slug]));
+  },
   async placementTaken(db: Db, userId: string) {
     const { count, error } = await db.from('practice_sessions').select('id', { count: 'exact', head: true })
       .eq('user_id', userId).eq('is_placement', true).in('status', ['queued', 'processing', 'completed']);
