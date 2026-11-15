@@ -76,6 +76,15 @@ export const authService = {
     log.info('password reset', { userId: user.id });
   },
 
+  /** Đổi mật khẩu khi đang đăng nhập: xác nhận lại mật khẩu hiện tại trước. */
+  async changePassword(db: Db, email: string, current: string, next: string) {
+    const { error: verr } = await db.auth.signInWithPassword({ email, password: current });
+    if (verr) throw mapAuthError(verr);
+    const { error } = await db.auth.updateUser({ password: next });
+    if (error) throw mapAuthError(error);
+    log.info('password changed', { email: maskEmail(email) });
+  },
+
   async googleSignInUrl(db: Db, next: string) {
     const { data, error } = await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: callbackUrl(next), skipBrowserRedirect: true } });
     if (error || !data.url) throw error ? mapAuthError(error) : new AppError('OAUTH_FAILED');

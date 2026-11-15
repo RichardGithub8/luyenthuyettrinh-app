@@ -11,6 +11,22 @@ Next.js 15 (App Router) + Supabase (Postgres, Auth, Storage) + Trigger.dev + Gro
 | 5 | Khóa học, tiến độ, lộ trình cá nhân hóa | Chưa làm (schema + seed đã có) |
 | 6 | So sánh tiến bộ, hoàn thiện xử lý lỗi | Chưa làm |
 
+## Frontend (SPA) + chạy local
+
+Giao diện là SPA tĩnh ở repo `luyenthuyettrinh` (HTML/CSS/JS thuần, hash routing). Backend phục vụ nó **cùng origin** (thư mục `public/`, trang chủ `/` được rewrite tới `public/index.html`), nên cookie phiên Supabase dùng được mà không cần CORS.
+
+```bash
+npx supabase start            # Postgres + Auth + Storage + Mailpit (email local: http://127.0.0.1:54324)
+cp .env.example .env.local    # điền URL/khóa từ output của `supabase start`
+npm run spa:sync              # chép ../luyenthuyettrinh vào public/ (chạy lại sau mỗi lần sửa frontend)
+npm run dev                   # http://localhost:3000
+```
+
+- Xác thực email và đặt lại mật khẩu dùng **link** (`/auth/confirm?token_hash=...`), không dùng mã 6 số. Mẫu email ở `supabase/templates/`; trên Supabase Cloud phải dán cùng nội dung vào Dashboard → Auth → Email Templates và đặt Site URL.
+- Link token_hash chạy được trên mọi thiết bị. Link PKCE mặc định của Supabase thì không (mất cookie verifier khi mở ở máy khác hoặc sau khi bấm "gửi lại").
+- Đã nối với backend: đăng ký, đăng nhập, xác thực email, quên/đặt lại/đổi mật khẩu, hồ sơ, mục tiêu, ngôn ngữ, onboarding, gói và lượt dùng (`js/api.js`, `Auth`, `UserStore` trong `js/store.js`).
+- Chưa nối (vẫn lưu localStorage): buổi luyện, thư viện, tiến độ khóa học, thanh toán, Google OAuth thật (cần khóa Google).
+
 ## 1. Kiến trúc
 
 ```mermaid

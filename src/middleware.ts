@@ -6,7 +6,7 @@ const PUBLIC_API = [/^\/api\/auth\//, /^\/api\/health$/, /^\/api\/public\//, /^\
 /** Trang cần đăng nhập. */
 const PROTECTED = [/^\/app(\/|$)/, /^\/pay\//, /^\/onboarding(\/|$)/, /^\/reset-password$/];
 /** Trang chỉ dành cho khách: đã đăng nhập thì chuyển vào ứng dụng. */
-const GUEST_ONLY = new Set(['/', '/login', '/register', '/forgot-password', '/get-started']);
+const GUEST_ONLY = new Set(['/login', '/register', '/forgot-password', '/get-started']);
 
 const withCookies = (from: NextResponse, to: NextResponse) => { from.cookies.getAll().forEach((c) => to.cookies.set(c)); return to; };
 
@@ -35,5 +35,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|img/|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|img/|css/|js/|index.html|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)'],
 };

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "spa:sync": "node scripts/sync-spa.mjs",
     "db:seed:gen": "node scripts/gen-seed.mjs ../luyenthuyettrinh/js/data.js > supabase/seed.sql",
     "db:check": "node scripts/check-schema.mjs",
     "db:types": "supabase gen types typescript --local > src/types/database.generated.ts",
