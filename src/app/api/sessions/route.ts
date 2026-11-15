@@ -19,3 +19,10 @@ export const POST = handler(async (req) => {
   const { user } = await requireUser();
   return ok(await practiceService.createUpload(supabaseAdmin(), user.id, await body(req, Input)), { status: 201 });
 });
+
+/** GET /api/sessions?limit= → { items } tóm tắt các buổi luyện đã chấm xong (mới nhất trước). */
+export const GET = handler(async (req) => {
+  const { user } = await requireUser();
+  const limit = Math.min(Math.max(Number(req.nextUrl.searchParams.get('limit')) || 100, 1), 200);
+  return ok({ items: await practiceService.listCompleted(supabaseAdmin(), user.id, limit) });
+});

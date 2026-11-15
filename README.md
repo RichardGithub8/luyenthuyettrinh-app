@@ -25,7 +25,8 @@ npm run dev                   # http://localhost:3000
 - Xác thực email và đặt lại mật khẩu dùng **link** (`/auth/confirm?token_hash=...`), không dùng mã 6 số. Mẫu email ở `supabase/templates/`; trên Supabase Cloud phải dán cùng nội dung vào Dashboard → Auth → Email Templates và đặt Site URL.
 - Link token_hash chạy được trên mọi thiết bị. Link PKCE mặc định của Supabase thì không (mất cookie verifier khi mở ở máy khác hoặc sau khi bấm "gửi lại").
 - Đã nối với backend: đăng ký, đăng nhập, xác thực email, quên/đặt lại/đổi mật khẩu, hồ sơ, mục tiêu, ngôn ngữ, onboarding, gói và lượt dùng (`js/api.js`, `Auth`, `UserStore` trong `js/store.js`).
-- Chưa nối (vẫn lưu localStorage): buổi luyện, thư viện, tiến độ khóa học, thanh toán, Google OAuth thật (cần khóa Google).
+- Buổi luyện đã nối (`js/practice.js`): nộp kịch bản, ghi âm/quay, tải file (signed upload), theo dõi phân tích (poll `GET /api/sessions/:id`), báo cáo, thư viện (nghe lại, tải về, xóa, phân tích lại), bài test đầu vào, giới hạn 5 phút và lượt tháng. `GET /api/sessions` trả tóm tắt các buổi đã chấm để dựng Tổng quan/Tiến bộ; tiến độ bài học được tính từ đó.
+- Chưa nối: thanh toán (nút nâng cấp vẫn là mô phỏng phía trình duyệt), đánh dấu đã đọc lý thuyết bài học (còn lưu localStorage), câu hỏi phản biện (chấm cục bộ), số đo ngôn ngữ cơ thể từ MediaPipe cho video, Google OAuth thật (cần khóa Google).
 
 ## 1. Kiến trúc
 

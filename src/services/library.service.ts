@@ -18,6 +18,7 @@ export const libraryService = {
     const sessions = await sessionRepository.byLibraryItems(db, userId, page.map((i) => i.id));
     const latest = new Map<string, (typeof sessions)[number]>();
     sessions.forEach((s) => { if (!latest.has(s.library_item_id)) latest.set(s.library_item_id, s); });
+    const slugs = await sessionRepository.lessonSlugs(db, [...latest.values()].map((s) => s.lesson_id));
     const results = await sessionRepository.resultsForSessions(db, userId, [...latest.values()].map((s) => s.id));
     const scoreOf = new Map(results.map((r) => [r.session_id, r.overall_score]));
     let rows = page.map((i) => {
@@ -25,7 +26,7 @@ export const libraryService = {
       return {
         id: i.id, kind: i.kind, title: i.title, createdAt: i.created_at, durationSec: i.duration_sec, sizeBytes: i.size_bytes, wordCount: i.word_count,
         media: i.kind === 'script' ? null : { available: !i.media_deleted_at, expiresAt: i.media_expires_at, deletedAt: i.media_deleted_at, deletedReason: i.media_delete_reason },
-        session: s ? { id: s.id, status: s.status, blockedReason: s.blocked_reason, goal: s.goal, speakingLanguage: s.speaking_language, lessonId: s.lesson_id, score: scoreOf.get(s.id) ?? null, errorCode: s.last_error_code } : null,
+        session: s ? { id: s.id, status: s.status, blockedReason: s.blocked_reason, goal: s.goal, speakingLanguage: s.speaking_language, lessonId: s.lesson_id, lessonSlug: s.lesson_id ? slugs.get(s.lesson_id) ?? null : null, isPlacement: s.is_placement, score: scoreOf.get(s.id) ?? null, errorCode: s.last_error_code } : null,
       };
     });
     if (o.filter === 'pending') rows = rows.filter((r) => r.session && ['pending_premium', 'pending_quota', 'failed'].includes(r.session.status));
