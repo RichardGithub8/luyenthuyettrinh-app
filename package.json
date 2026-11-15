@@ -1,0 +1,41 @@
+{
+  "name": "luyenthuyettrinh-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:seed:gen": "node scripts/gen-seed.mjs ../luyenthuyettrinh/js/data.js > supabase/seed.sql",
+    "db:check": "node scripts/check-schema.mjs",
+    "db:types": "supabase gen types typescript --local > src/types/database.generated.ts",
+    "test": "rm -rf .test-dist && tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^1.1.1",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.118.0",
+    "@trigger.dev/sdk": "^4.7.7",
+    "next": "15.5.28",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "server-only": "0.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.2.17",
+    "@trigger.dev/build": "^4.7.7",
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "supabase": "^3.1.0",
+    "trigger.dev": "^4.7.7",
+    "typescript": "5.8.3"
+  },
+  "overrides": {
+    "postcss": "8.5.31",
+    "sharp": "0.35.5",
+    "ws": "8.22.0"
+  }
+}
