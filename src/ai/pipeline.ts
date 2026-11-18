@@ -18,7 +18,7 @@ import { llmProvider } from '@/ai/providers/llm';
 import { prepareAudio, cleanupTemp } from '@/ai/providers/audio';
 import { scoreWithRepair } from '@/ai/scoring';
 import { jobEvents } from '@/ai/events';
-import { isPremium } from '@/services/profile.service';
+import { activePlan } from '@/services/profile.service';
 
 const MIN_WORDS = 10;
 const GOAL_NAME: Record<Goal, string> = { presentation: 'presentation', reporting: 'progress report', interview: 'job interview', pitching: 'investor pitch', debating: 'debate' };
@@ -77,7 +77,7 @@ export async function runAnalysis(sessionId: string, opts: { runId?: string; att
     await ev.info('stt', 'done', { durationSec: transcript.durationSec, words: transcript.words.length, segments: transcript.segments.length, transcoded: audio.transcoded });
 
     // 2. Chống sửa thời lượng: đo lại bằng STT, áp lại quy tắc > 5 phút của gói Miễn phí.
-    const limits = PLANS[isPremium(profile) ? 'premium' : 'free'];
+    const limits = PLANS[activePlan(profile)];
     if (!s.is_placement && transcript.durationSec > limits.maxAnalyzeSec + 5) {
       await db.from('library_items').update({ duration_sec: transcript.durationSec }).eq('id', item.id);
       const { data: blocked } = await db.from('practice_sessions').update({ status: 'pending_premium', blocked_reason: 'over_free_duration', credit_reserved: false })

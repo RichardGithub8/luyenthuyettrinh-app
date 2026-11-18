@@ -1,10 +1,11 @@
 import 'server-only';
 import type { Db } from '@/repositories/types';
-import type { BillingCycle, PaymentProvider, PaymentRow } from '@/types/database';
+import type { BillingCycle, PaymentProvider, PaymentRow, Product } from '@/types/database';
 import { AppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { serverEnv } from '@/lib/env';
-import { PRICES_VND } from '@/config/plans';
+import { PLAN_RANK, PRICES_VND, priceOf } from '@/config/plans';
+import { profileService } from '@/services/profile.service';
 import { paymentRepository } from '@/repositories/payment.repository';
 import { sessionRepository } from '@/repositories/session.repository';
 import { practiceService } from '@/services/practice.service';
@@ -17,7 +18,7 @@ const RESUMABLE = ['pending_premium', 'pending_quota'] as const;
 export function paymentView(p: PaymentRow) {
   const expired = p.status === 'pending' && new Date(p.expires_at).getTime() < Date.now();
   return {
-    id: p.id, provider: p.provider, orderCode: p.order_code, amountVnd: p.amount_vnd, cycle: p.cycle,
+    id: p.id, provider: p.provider, orderCode: p.order_code, amountVnd: p.amount_vnd, product: p.product, cycle: p.cycle,
     status: expired ? 'expired' as const : p.status, resumeSessionId: p.resume_session_id, returnPath: p.return_path,
     failureCode: p.failure_code, expiresAt: p.expires_at, paidAt: p.paid_at, createdAt: p.created_at,
     landingPath: landingPath({ status: expired ? 'expired' : p.status, resumeSessionId: p.resume_session_id, returnPath: p.return_path, paymentId: p.id }),
@@ -52,7 +53,16 @@ export const paymentService = {
     return { providers: enabledProviders(), prices: PRICES_VND, currency: 'VND' as const };
   },
 
-  async create(db: Db, userId: string, i: { provider: PaymentProvider; cycle: BillingCycle; resumeSessionId?: string; returnPath?: string }, ctx: { ip: string; lang: 'vi' | 'en' }) {
+  async create(db: Db, userId: string, i: { provider: PaymentProvider; product: Product; cycle: BillingCycle; resumeSessionId?: string; returnPath?: string }, ctx: { ip: string; lang: 'vi' | 'en' }) {
+    const amount = priceOf(i.product, i.cycle);
+    if (!amount) throw new AppError('VALIDATION_FAILED', { fields: { cycle: ['INVALID_FOR_PRODUCT'] } });
+    // Không bán gói thấp hơn gói đang dùng; thành viên (không phải trưởng nhóm) không tự gia hạn Team.
+    const me = await profileService.getMe(db, userId);
+    if (PLAN_RANK[me.plan] > PLAN_RANK[i.product]) throw new AppError('PLAN_ALREADY_HIGHER', { plan: me.plan });
+    if (i.product === 'team' && me.plan === 'team') {
+      const { data: own } = await db.from('teams').select('id').eq('owner_id', userId).maybeSingle();
+      if (!own) throw new AppError('ALREADY_IN_TEAM');
+    }
     const gw = gateway(i.provider);
     if (!gw) throw new AppError('PAYMENT_PROVIDER_UNAVAILABLE', { provider: i.provider, available: enabledProviders() });
     if (i.resumeSessionId && !(await sessionRepository.findOwned(db, userId, i.resumeSessionId))) throw new AppError('NOT_FOUND', { resource: 'session' });
@@ -60,15 +70,14 @@ export const paymentService = {
     // One open checkout per user: an older tab's order is superseded (a late success on it is still honoured).
     await paymentRepository.cancelOpen(db, userId, 'SUPERSEDED');
     const now = new Date(), expiresAt = new Date(now.getTime() + serverEnv().PAYMENT_TTL_MIN * 60_000);
-    const amount = PRICES_VND[i.cycle];
     const p = await paymentRepository.insert(db, {
-      user_id: userId, provider: i.provider, order_code: newOrderCode(now), amount_vnd: amount, cycle: i.cycle,
+      user_id: userId, provider: i.provider, order_code: newOrderCode(now), amount_vnd: amount, product: i.product, cycle: i.cycle,
       resume_session_id: i.resumeSessionId ?? null, return_path: i.returnPath ?? null, expires_at: expiresAt.toISOString(),
     });
-    const info = `luyenthuyettrinh Premium ${i.cycle} ${p.order_code}`;
+    const info = `luyenthuyettrinh ${i.product} ${i.cycle} ${p.order_code}`;
     try {
       const { checkoutUrl } = await gw.createCheckout({ paymentId: p.id, orderCode: p.order_code, amountVnd: amount, info, ipAddr: ctx.ip, locale: ctx.lang, createdAt: now, expiresAt });
-      log.info('payment created', { paymentId: p.id, provider: i.provider, cycle: i.cycle, resume: !!i.resumeSessionId });
+      log.info('payment created', { paymentId: p.id, provider: i.provider, product: i.product, cycle: i.cycle, resume: !!i.resumeSessionId });
       return { ...paymentView(p), checkoutUrl };
     } catch (e) {
       await paymentRepository.transition(db, p.id, ['pending'], { status: 'failed', failure_code: 'GATEWAY_ERROR', failure_message: String(e).slice(0, 500) });

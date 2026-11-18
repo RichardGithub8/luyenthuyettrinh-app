@@ -9,6 +9,7 @@ const Input = zPracticeContext.extend({
   kind: z.enum(['audio', 'video']),
   mimeType: z.string().min(3).max(100),
   sizeBytes: z.number().int().positive(),
+  source: z.enum(['recording', 'upload']).default('upload'),   // ghi trực tiếp trên trang hay tải file có sẵn (gói Miễn phí chỉ được ghi trực tiếp)
 });
 
 /**

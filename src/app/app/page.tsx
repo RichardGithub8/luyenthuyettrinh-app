@@ -8,7 +8,7 @@ export default async function Dashboard() {
   return (
     <main className="wrap" style={{ maxWidth: 640 }}><div className="card">
       <h1>Chào {me.fullName}</h1>
-      <p className="muted">Gói {me.isPremium ? 'Premium' : 'Miễn phí'} · còn {me.usage.remaining}/{me.usage.limit} lượt tháng này.</p>
+      <p className="muted">Gói {({ free: 'Miễn phí', pass: 'Pass', premium: 'Premium', team: 'Team' } as const)[me.plan]} · còn {me.usage.remaining}/{me.usage.limit} lượt {me.usage.scope === 'pass' ? 'trong Pass' : 'tháng này'}.</p>
       <pre>{JSON.stringify(me, null, 2)}</pre>
       <LogoutButton />
     </div></main>

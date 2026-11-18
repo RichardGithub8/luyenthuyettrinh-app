@@ -32,6 +32,11 @@ export interface PracticeContextInput {
 }
 
 /** Xác định mục tiêu, ngôn ngữ, đề bài, bài học và tiêu đề cho một buổi luyện. */
+/** Gói Miễn phí chỉ mở 2 loại hình (thuyết trình, báo cáo); bài test đầu vào không bị giới hạn. */
+function assertGoalAllowed(me: Me, goal: GoalType, isPlacement: boolean) {
+  if (!isPlacement && !me.limits.goals.includes(goal)) throw new AppError('PLAN_REQUIRED', { feature: 'goal', goal });
+}
+
 async function resolveContext(db: Db, me: Me, i: PracticeContextInput) {
   const lang = i.speakingLanguage ?? me.speakingLanguage;
   if (i.isPlacement) {
@@ -87,7 +92,7 @@ async function decideAndEnqueue(db: Db, me: Me, s: PracticeSessionRow, item: Lib
     return (await sessionRepository.transition(db, me.id, s.id, from, { status: decision.status, blocked_reason: decision.reason })) ?? s;
   }
   if (!s.is_placement && !s.credit_reserved) {
-    const { data: reserved, error } = await db.rpc('reserve_analysis_credit', { p_user: me.id, p_limit: me.limits.analysesPerMonth });
+    const { data: reserved, error } = await db.rpc('reserve_analysis_credit', { p_user: me.id, p_limit: me.limits.analysesPerPeriod });
     if (error) throw new AppError('INTERNAL', undefined, error);
     if (!reserved) return (await sessionRepository.transition(db, me.id, s.id, from, { status: 'pending_quota', blocked_reason: 'no_quota' })) ?? s;
   }
@@ -113,16 +118,19 @@ async function decideAndEnqueue(db: Db, me: Me, s: PracticeSessionRow, item: Lib
 
 export const practiceService = {
   /** Bước 1 (ghi âm/video/tải file): tạo buổi luyện + mục thư viện, cấp signed upload URL. */
-  async createUpload(db: Db, userId: string, i: PracticeContextInput & { kind: 'audio' | 'video'; mimeType: string; sizeBytes: number }) {
+  async createUpload(db: Db, userId: string, i: PracticeContextInput & { kind: 'audio' | 'video'; mimeType: string; sizeBytes: number; source?: 'recording' | 'upload' }) {
     const me = await profileService.getMe(db, userId);
     if (!me.onboarded && !i.isPlacement) throw new AppError('ONBOARDING_REQUIRED');
-    if (i.kind === 'video' && !me.limits.video) throw new AppError('PREMIUM_REQUIRED', { feature: 'video' });
+    if (i.kind === 'video' && !me.limits.video) throw new AppError('PLAN_REQUIRED', { feature: 'video' });
+    // Gói Miễn phí: chỉ ghi âm trực tiếp (không tải file có sẵn). Bài test đầu vào luôn được phép.
+    if (!i.isPlacement && !me.limits.upload && i.source !== 'recording') throw new AppError('PLAN_REQUIRED', { feature: 'upload' });
     const mime = baseMime(i.mimeType), media = MEDIA_TYPES[mime];
     if (!media) throw new AppError('UNSUPPORTED_FILE', { mimeType: mime });
     if (i.kind === 'video' && media.kind !== 'video') throw new AppError('UNSUPPORTED_FILE', { mimeType: mime, expected: 'video' });
     if (i.sizeBytes > MAX_UPLOAD_BYTES) throw new AppError('FILE_TOO_LARGE', { maxBytes: MAX_UPLOAD_BYTES });
 
     const ctx = await resolveContext(db, me, i);
+    assertGoalAllowed(me, ctx.goal, !!i.isPlacement);
     const itemId = crypto.randomUUID(), path = mediaPath(userId, itemId, mime);
     const retentionDays = serverEnv().MEDIA_RETENTION_DAYS;
     const item = await libraryRepository.insert(db, {
@@ -181,6 +189,7 @@ export const practiceService = {
     const text = i.text.replace(/\r\n/g, '\n').trim(), words = wordCount(text);
     if (words < MIN_SCRIPT_WORDS) throw new AppError('SCRIPT_TOO_SHORT', { words, min: MIN_SCRIPT_WORDS });
     const ctx = await resolveContext(db, me, { ...i, isPlacement: false });
+    assertGoalAllowed(me, ctx.goal, false);
     const item = await libraryRepository.insert(db, { user_id: userId, kind: 'script', title: ctx.title, script_text: text, word_count: words, duration_sec: Math.round(words / 130 * 60) });
     const s = await sessionRepository.insert(db, { user_id: userId, library_item_id: item.id, lesson_id: ctx.lessonId, prompt_id: ctx.promptId, goal: ctx.goal, speaking_language: ctx.lang, title: ctx.title, status: 'uploaded' });
     if (ctx.lessonId) await contentRepository.markLessonStarted(db, userId, ctx.lessonId);

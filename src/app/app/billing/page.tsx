@@ -15,7 +15,7 @@ export default async function Billing({ searchParams }: { searchParams: Promise<
     <main className="wrap" style={{ maxWidth: 720 }}>
       {payment && <div className="alert">payment = {payment}</div>}
       <div className="card">
-        <h1>{me.isPremium ? 'Premium' : 'Miễn phí / Free'}</h1>
+        <h1>{({ free: 'Miễn phí / Free', pass: 'Pass', premium: 'Premium', team: 'Team' } as const)[me.plan]}</h1>
         <pre>{JSON.stringify({ plan: me.plan, usage: me.usage, providers: paymentService.providers(), history }, null, 2)}</pre>
       </div>
     </main>
