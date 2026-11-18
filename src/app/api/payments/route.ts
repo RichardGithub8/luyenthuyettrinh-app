@@ -6,7 +6,8 @@ import { paymentService } from '@/services/payment.service';
 
 const Create = z.object({
   provider: z.enum(['momo', 'vnpay', 'mock']),
-  cycle: z.enum(['monthly', 'yearly']),
+  product: z.enum(['pass', 'premium', 'team']).default('premium'),
+  cycle: z.enum(['once', 'monthly', 'semiannual']),                       // pass → once; premium/team → monthly | semiannual
   resumeSessionId: z.uuid().optional(),                                    // talk to analyse right after paying
   returnPath: z.string().max(300).regex(/^\/(?!\/)[^\s\\]*$/).optional(),   // where to land when there is no talk
 });

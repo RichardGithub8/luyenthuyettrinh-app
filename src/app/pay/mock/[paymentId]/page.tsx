@@ -21,7 +21,7 @@ export default async function MockCheckout({ params }: { params: Promise<{ payme
     <main className="wrap" style={{ maxWidth: 440 }}><div className="card">
       <p className="muted" style={{ fontSize: 12, letterSpacing: 1 }}>CỔNG THANH TOÁN MÔ PHỎNG · MOCK GATEWAY</p>
       <h1 style={{ margin: '8px 0' }}>{vnd(p.amountVnd)}</h1>
-      <p>Premium · {p.cycle === 'yearly' ? 'Theo năm / Yearly' : 'Theo tháng / Monthly'}</p>
+      <p>{({ pass: 'Pass 7 ngày / 7-day Pass', premium: 'Premium', team: 'Team' } as const)[p.product]} · {({ once: '7 ngày / 7 days', monthly: 'Theo tháng / Monthly', semiannual: '6 tháng / 6 months', yearly: 'Theo năm / Yearly' } as const)[p.cycle]}</p>
       <p className="muted">Mã đơn / Order: {p.orderCode}<br />Hết hạn / Expires: {new Date(p.expiresAt).toLocaleTimeString('vi-VN')}</p>
       <form method="post" action="/api/payments/mock/simulate" style={{ display: 'grid', gap: 10, marginTop: 16 }}>
         <input type="hidden" name="paymentId" value={p.id} />

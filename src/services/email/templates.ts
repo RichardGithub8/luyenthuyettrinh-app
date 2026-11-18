@@ -10,6 +10,10 @@ ${cta ? `<p style="margin:24px 0 0"><a href="${esc(cta.url)}" style="background:
 const fmtDate = (iso: string, lang: LangCode) => new Date(iso).toLocaleDateString(lang === 'en' ? 'en-US' : 'vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: 'numeric', month: 'long', year: 'numeric' });
 
 export const templates = {
+  /** Mẫu chung một đoạn văn + nút (vd. lời mời vào nhóm). */
+  simple(title: string, text: string, cta?: { label: string; url: string }) {
+    return layout(title, `<p>${esc(text)}</p>`, cta);
+  },
   /** Nhắc trước khi tệp ghi âm/video bị xóa theo chính sách 30 ngày. */
   retentionWarning(p: { name: string; lang: LangCode; items: { title: string; expiresAt: string }[]; libraryUrl: string }) {
     const en = p.lang === 'en';

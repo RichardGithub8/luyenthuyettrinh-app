@@ -6,7 +6,8 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type GoalType = 'presentation' | 'reporting' | 'interview' | 'pitching' | 'debating';
 export type LangCode = 'vi' | 'en';
-export type PlanTier = 'free' | 'premium';
+export type PlanTier = 'free' | 'pass' | 'premium' | 'team';
+export type Product = 'pass' | 'premium' | 'team';
 export type SubmissionKind = 'audio' | 'video' | 'script';
 export type SessionStatus = 'draft' | 'uploading' | 'uploaded' | 'pending_premium' | 'pending_quota' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 export type AnalysisStatus = 'queued' | 'transcribing' | 'analyzing_body' | 'scoring' | 'completed' | 'failed' | 'timed_out';
@@ -14,7 +15,7 @@ export type LessonSkill = 'structure' | 'opening' | 'closing' | 'pace' | 'filler
 export type LessonStatus = 'not_started' | 'in_progress' | 'completed';
 export type PaymentProvider = 'momo' | 'vnpay' | 'mock';
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'cancelled' | 'expired';
-export type BillingCycle = 'monthly' | 'yearly';
+export type BillingCycle = 'monthly' | 'yearly' | 'semiannual' | 'once';
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired';
 
 type Table<Row, Required extends keyof Row = never> = {
@@ -28,9 +29,10 @@ type Ts = string;
 export type ProfileRow = {
   id: string; email: string; full_name: string; organization: string | null; avatar_url: string | null;
   default_goal: GoalType; ui_language: LangCode; speaking_language: LangCode; onboarded_at: Ts | null;
-  plan: PlanTier; premium_expires_at: Ts | null; created_at: Ts; updated_at: Ts;
+  plan: PlanTier; premium_expires_at: Ts | null; plan_started_at: Ts | null; pass_credits: number; created_at: Ts; updated_at: Ts;
 };
-export type UsageCounterRow = { user_id: string; period_start: string; analyses_used: number; updated_at: Ts }
+export type UsageScope = 'month' | 'pass';
+export type UsageCounterRow = { user_id: string; scope: UsageScope; period_start: string; analyses_used: number; updated_at: Ts }
 export type CourseRow = {
   id: string; goal: GoalType; slug: string; title: Json; description: Json; ai_persona: Json; cover_image: string | null;
   sort_order: number; is_published: boolean; created_at: Ts; updated_at: Ts;
@@ -67,15 +69,19 @@ export type UserLessonProgressRow = {
   attempts: number; completed_at: Ts | null; updated_at: Ts;
 };
 export type SubscriptionRow = {
-  id: string; user_id: string; plan: PlanTier; cycle: BillingCycle; status: SubscriptionStatus; auto_renew: boolean;
+  id: string; user_id: string; plan: PlanTier; product: Product; cycle: BillingCycle; status: SubscriptionStatus; auto_renew: boolean;
   current_period_start: Ts; current_period_end: Ts; cancelled_at: Ts | null; created_at: Ts; updated_at: Ts;
 };
 export type PaymentRow = {
   id: string; user_id: string; subscription_id: string | null; provider: PaymentProvider; order_code: string; provider_txn_id: string | null;
-  amount_vnd: number; cycle: BillingCycle; status: PaymentStatus; resume_session_id: string | null; return_path: string | null;
+  amount_vnd: number; cycle: BillingCycle; product: Product; status: PaymentStatus; resume_session_id: string | null; return_path: string | null;
   failure_code: string | null; failure_message: string | null; ipn_payload: Json | null; expires_at: Ts; paid_at: Ts | null;
   created_at: Ts; updated_at: Ts;
 };
+
+export type TeamRow = { id: string; owner_id: string; name: string; plan_expires_at: Ts | null; created_at: Ts; updated_at: Ts };
+export type TeamMemberRow = { team_id: string; email: string; user_id: string | null; role: 'leader' | 'member'; status: 'invited' | 'active'; invited_at: Ts; joined_at: Ts | null };
+export type TeamScriptRow = { id: string; team_id: string; author_id: string | null; title: string; body: string; created_at: Ts };
 
 export type EmailStatus = 'sent' | 'mocked' | 'failed';
 export type EmailMessageRow = {
@@ -99,6 +105,9 @@ export type Database = {
       subscriptions: Table<SubscriptionRow, 'user_id' | 'cycle' | 'current_period_start' | 'current_period_end'>;
       payments: Table<PaymentRow, 'user_id' | 'provider' | 'order_code' | 'amount_vnd' | 'cycle' | 'expires_at'>;
       email_messages: Table<EmailMessageRow, 'to_email' | 'template' | 'subject' | 'provider' | 'status'>;
+      teams: Table<TeamRow, 'owner_id' | 'name'>;
+      team_members: Table<TeamMemberRow, 'team_id' | 'email'>;
+      team_scripts: Table<TeamScriptRow, 'team_id' | 'title' | 'body'>;
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -108,6 +117,12 @@ export type Database = {
       refund_analysis_credit: { Args: { p_user: string }; Returns: undefined };
       confirm_payment: { Args: { p_payment: string; p_outcome: string; p_txn: string | null; p_amount: number; p_payload: Json; p_code?: string | null; p_message?: string | null }; Returns: Json };
       expire_billing: { Args: Record<string, never>; Returns: Json };
+      usage_key: { Args: { p_user: string }; Returns: { scope: UsageScope; period: string }[] };
+      team_invite: { Args: { p_team: string; p_email: string; p_max: number }; Returns: Json };
+      team_join: { Args: { p_team: string; p_user: string; p_email: string }; Returns: Json };
+      team_remove: { Args: { p_team: string; p_email: string }; Returns: Json };
+      team_sync_member: { Args: { p_user: string; p_team: string }; Returns: undefined };
+      team_unsync_member: { Args: { p_user: string }; Returns: undefined };
     };
     Enums: {
       goal_type: GoalType; lang_code: LangCode; plan_tier: PlanTier; submission_kind: SubmissionKind; session_status: SessionStatus;
