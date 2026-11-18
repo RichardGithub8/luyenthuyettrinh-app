@@ -118,6 +118,10 @@ export function momoSignResult(cfg: MomoConfig, p: Record<string, string>) {
 /** Where the browser lands after paying. Never the dashboard when a talk is waiting. */
 export function landingPath(p: { status: string; resumeSessionId: string | null; returnPath: string | null; paymentId: string }) {
   const q = `payment=${encodeURIComponent(p.status)}&paymentId=${encodeURIComponent(p.paymentId)}`;
+  // Trang SPA (luyenthuyettrinh.com, định tuyến bằng hash): luôn quay về đúng màn đã gửi, kèm id bài đang chờ.
+  if (p.returnPath && /^\/#[\w-]*(\?[^\s]*)?$/.test(p.returnPath)) {
+    return `${p.returnPath}${p.returnPath.includes('?') ? '&' : '?'}${q}${p.resumeSessionId ? `&session=${encodeURIComponent(p.resumeSessionId)}` : ''}`;
+  }
   if (p.resumeSessionId) return `/app/sessions/${p.resumeSessionId}?${q}`;
   const base = p.returnPath && /^\/[^/\\]/.test(p.returnPath) ? p.returnPath : '/app/billing';
   return `${base}${base.includes('?') ? '&' : '?'}${q}`;

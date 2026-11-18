@@ -72,4 +72,7 @@ test('landing: waiting talk wins over return path; never the dashboard', () => {
   assert.equal(landingPath({ status: 'succeeded', resumeSessionId: 's1', returnPath: '/app', paymentId: 'p' }), '/app/sessions/s1?payment=succeeded&paymentId=p');
   assert.equal(landingPath({ status: 'failed', resumeSessionId: null, returnPath: '/app/pricing?x=1', paymentId: 'p' }), '/app/pricing?x=1&payment=failed&paymentId=p');
   assert.equal(landingPath({ status: 'succeeded', resumeSessionId: null, returnPath: '//evil.com', paymentId: 'p' }), '/app/billing?payment=succeeded&paymentId=p');
+  // SPA return paths (hash routes) win, and carry the waiting talk's id.
+  assert.equal(landingPath({ status: 'succeeded', resumeSessionId: 's1', returnPath: '/#goi-dich-vu', paymentId: 'p' }), '/#goi-dich-vu?payment=succeeded&paymentId=p&session=s1');
+  assert.equal(landingPath({ status: 'cancelled', resumeSessionId: null, returnPath: '/#nhom?x=1', paymentId: 'p' }), '/#nhom?x=1&payment=cancelled&paymentId=p');
 });
