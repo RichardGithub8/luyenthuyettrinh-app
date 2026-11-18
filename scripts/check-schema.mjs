@@ -121,7 +121,7 @@ must('pass while premium is honoured', (await buy(U3, 'pass', 'once', 59000)).re
 q3 = await prof(U3);
 must('pass while premium: extends premium by 7 days, stays premium', q3.plan === 'premium' && Math.abs(q3.days - before - 7) < 0.01, q3);
 
-must('team activates', (await buy(U4, 'team', 'monthly', 690000)).result === 'activated');
+must('team activates', (await buy(U4, 'team', 'monthly', 299000)).result === 'activated');
 const T = (await one(`select id from teams where owner_id='${U4}'`))[0]?.id;
 must('team: team created with leader', !!T && (await one(`select role, status from team_members where team_id='${T}' and user_id='${U4}'`))[0]?.role === 'leader');
 must('team: leader has team plan', (await prof(U4)).plan === 'team');
@@ -134,15 +134,15 @@ must('member joins', (await one(`select team_join('${T}','${U5}','mem@test.vn') 
 const q5 = await prof(U5), q4 = await prof(U4);
 must('member gets team plan until the team ends', q5.plan === 'team' && Math.abs(q5.days - q4.days) < 0.01, q5);
 must('premium user joins team, keeps the later end date', (await one(`select team_join('${T}','${U3}','pass@test.vn') r`))[0].r.result === 'joined' && (await prof(U3)).plan === 'team' && Math.abs((await prof(U3)).days - q3.days) < 0.01);
-await db.exec(`insert into payments (user_id, provider, order_code, amount_vnd, cycle, product, expires_at) values ('${U6}','mock','V2X',690000,'monthly','team', now() + interval '15 min')`);
-await confirm((await one(`select id from payments where order_code='V2X'`))[0].id, 'succeeded', 'V2XT', 690000);
+await db.exec(`insert into payments (user_id, provider, order_code, amount_vnd, cycle, product, expires_at) values ('${U6}','mock','V2X',299000,'monthly','team', now() + interval '15 min')`);
+await confirm((await one(`select id from payments where order_code='V2X'`))[0].id, 'succeeded', 'V2XT', 299000);
 const T6 = (await one(`select id from teams where owner_id='${U6}'`))[0].id;
 await one(`select team_invite('${T6}','mem@test.vn',5)`);
 must('a user is active in one team only', (await one(`select team_join('${T6}','${U5}','mem@test.vn') r`))[0].r.result === 'in_other_team');
 must('leader cannot be removed', (await one(`select team_remove('${T}','lead@test.vn') r`))[0].r.result === 'is_leader');
 must('remove member → back to free', (await one(`select team_remove('${T}','mem@test.vn') r`))[0].r.result === 'removed' && (await prof(U5)).plan === 'free');
 must('remove premium member → back to own premium', (await one(`select team_remove('${T}','pass@test.vn') r`))[0].r.result === 'removed' && (await prof(U3)).plan === 'premium');
-must('team renew stacks', (await buy(U4, 'team', 'semiannual', 3490000)).result === 'activated' && (await prof(U4)).days > 200);
+must('team renew stacks', (await buy(U4, 'team', 'semiannual', 1490000)).result === 'activated' && (await prof(U4)).days > 200);
 must('premium 6 months ≈ 6 months', (await buy(U5, 'premium', 'semiannual', 399000)).result === 'activated' && (await prof(U5)).days > 179 && (await prof(U5)).days < 186);
 await db.exec(`update profiles set premium_expires_at = now() - interval '1 minute' where id='${U3}'`);
 await one(`select expire_billing()`);
