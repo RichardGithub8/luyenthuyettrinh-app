@@ -19,6 +19,7 @@ import { prepareAudio, cleanupTemp } from '@/ai/providers/audio';
 import { scoreWithRepair } from '@/ai/scoring';
 import { jobEvents } from '@/ai/events';
 import { activePlan } from '@/services/profile.service';
+import { tooLittleSpeech } from '@/ai/core/silence';
 
 const MIN_WORDS = 10;
 const GOAL_NAME: Record<Goal, string> = { presentation: 'presentation', reporting: 'progress report', interview: 'job interview', pitching: 'investor pitch', debating: 'debate' };
@@ -88,8 +89,8 @@ export async function runAnalysis(sessionId: string, opts: { runId?: string; att
       await ev.warn('duration', 'actual duration exceeds plan limit, moved to pending_premium', { reported: item.duration_sec, actual: transcript.durationSec });
       return { status: 'blocked', reason: 'over_free_duration' };
     }
-    if (transcript.words.length + transcript.segments.length === 0 || transcript.text.trim().split(/\s+/).length < MIN_WORDS) {
-      throw new PipelineError('NO_SPEECH', false, `only ${transcript.text.trim().split(/\s+/).filter(Boolean).length} words detected`);
+    if (tooLittleSpeech(transcript, MIN_WORDS)) {
+      throw new PipelineError('NO_SPEECH', false, `only ${transcript.text.trim().split(/\s+/).filter(Boolean).length} words in ${Math.round(transcript.durationSec)}s`);
     }
     await db.from('library_items').update({ duration_sec: transcript.durationSec }).eq('id', item.id);
 

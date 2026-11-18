@@ -3,6 +3,7 @@ import { serverEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { PipelineError, type Lang, type Transcript, type Goal } from '@/ai/core/types';
 import { mockTranscript } from '@/ai/core/mock';
+import { dropSilence, type RawSegment, type RawWord } from '@/ai/core/silence';
 
 export interface SttRequest { audio: Blob; filename: string; language: Lang; prompt: string; hint: { goal: Goal; durationSec: number; placement: boolean } }
 export interface SttProvider { readonly name: string; readonly model: string; transcribe(r: SttRequest): Promise<Transcript> }
@@ -28,12 +29,10 @@ class GroqStt implements SttProvider {
     if (res.status === 429) throw new PipelineError('STT_RATE_LIMITED', true, `Groq 429, retry-after ${res.headers.get('retry-after')}`);
     if (res.status >= 500) throw new PipelineError('STT_FAILED', true, `Groq ${res.status}`);
     if (!res.ok) throw new PipelineError('AUDIO_UNREADABLE', false, `Groq ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const j = await res.json() as { text: string; duration: number; language: string; segments?: { start: number; end: number; text: string }[]; words?: { word: string; start: number; end: number }[] };
-    return {
-      text: j.text ?? '', durationSec: Number(j.duration ?? 0), language: j.language ?? r.language,
-      segments: (j.segments ?? []).map((s) => ({ start: s.start, end: s.end, text: s.text.trim() })).filter((s) => s.text),
-      words: (j.words ?? []).map((w) => ({ word: w.word.trim(), start: w.start, end: w.end })).filter((w) => w.word),
-    };
+    const j = await res.json() as { text: string; duration: number; language: string; segments?: RawSegment[]; words?: RawWord[] };
+    const { transcript, dropped } = dropSilence(j, r.language);
+    if (dropped) logger.info('stt: dropped silent/hallucinated segments', { dropped, total: j.segments?.length ?? 0 });
+    return transcript;
   }
 }
 
